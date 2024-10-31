@@ -1,0 +1,194 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-petclinic
+  labels:
+    app: spring-petclinic
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spring-petclinic
+  template:
+    metadata:
+      labels:
+        app: spring-petclinic
+    spec:
+      containers:
+        - name: spring-petclinic
+          image: trukhinyuri/spring-petclinic:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "mysql" # Change to "postgres" if using PostgreSQL
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:mysql://mysql:3306/petclinic" # Change to "jdbc:postgresql://postgres:5432/petclinic" for PostgreSQL
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "petclinic"
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: "petclinic"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-petclinic
+  labels:
+    app: spring-petclinic
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: spring-petclinic
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pingservice
+  labels:
+    app: pingservice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pingservice
+  template:
+    metadata:
+      labels:
+        app: pingservice
+    spec:
+      containers:
+        - name: pingservice
+          image: trukhinyuri/pingservice:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: "http://spring-petclinic:8080"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pingservice
+  labels:
+    app: pingservice
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: pingservice
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:9.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: ""
+            - name: MYSQL_ALLOW_EMPTY_PASSWORD
+              value: "true"
+            - name: MYSQL_USER
+              value: "petclinic"
+            - name: MYSQL_PASSWORD
+              value: "petclinic"
+            - name: MYSQL_DATABASE
+              value: "petclinic"
+          volumeMounts:
+            - mountPath: /etc/mysql/conf.d
+              name: mysql-config
+              readOnly: true
+      volumes:
+        - name: mysql-config
+          hostPath:
+            path: "/path/to/your/mysql/conf.d" # Update with the correct path for MySQL configuration files
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+spec:
+  ports:
+    - protocol: TCP
+      port: 3306
+      targetPort: 3306
+  selector:
+    app: mysql
+  clusterIP: None
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: "petclinic"
+            - name: POSTGRES_PASSWORD
+              value: "petclinic"
+            - name: POSTGRES_DB
+              value: "petclinic"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres
+  clusterIP: None
